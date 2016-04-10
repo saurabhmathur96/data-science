@@ -1,0 +1,147 @@
+---
+title: "EDA of diamonds dataset"
+author: "Saurabh Mathur"
+date: "4 April 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction and setup
+The `diamonds` dataset contains the prices of 50,000 round cut diamonds.
+It is provided with the `ggplot2` library.
+
+### Format
+It has the following variables - 
+- *price*: price in US dollars ($326–$18,823)
+- *carat*: weight of the diamond (0.2–5.01)
+- *cut*: quality of the cut (Fair, Good, Very Good, Premium, Ideal)
+- *color*: diamond colour, from J (worst) to D (best)
+- *clarity*: a measurement of how clear the diamond is (I1 (worst), SI1, SI2, VS1, VS2, VVS1, VVS2, IF (best))
+- *x*: length in mm (0–10.74)
+- *y*: width in mm (0–58.9)
+- *z*: depth in mm (0–31.8)
+- *depth*: total depth percentage = z / mean(x, y) = 2 * z / (x + y) (43–79)
+- *table*: width of top of diamond relative to widest point (43–95)
+
+### Loading the dataset
+Loading the `ggplot2` library loads our dataset as well.
+```{r}
+library(ggplot2)
+```
+
+```{r}
+sum(is.na(diamonds))
+```
+As seen above there are no `NA` values in the dataset as it has been pre-cleaned.
+
+## Structure
+The dataset has the following columns - 
+```{r}
+colnames(diamonds)
+```
+
+Its dimensions are given by -
+```{r}
+dim(diamonds)
+```
+
+The complete summary of the dataset -
+```{r}
+summary(diamonds)
+```
+
+## Tables
+
+### Cut v/s Color
+```{r}
+table(diamonds$cut, diamonds$color)
+```
+
+### Cut v/s Clarity
+```{r}
+table(diamonds$cut, diamonds$clarity)
+```
+
+### Color v/s Clarity
+```{r}
+table(diamonds$color, diamonds$clarity)
+
+```
+
+
+
+## Plots
+
+
+### Price 
+```{r}
+hist(diamonds$price)
+```
+
+### Carat
+```{r}
+hist(diamonds$carat)
+```
+
+### carat v/s Price
+
+#### Simple 
+A plot of carat v/s price of diamonds using the built-in `plot` function is given as -
+
+```{r}
+plot(x = diamonds$carat, y = diamonds$price, xlab = "Carat", ylab = "Price, in USD", main = "Carat v/s Price of diamonds (USD)")
+```
+
+#### qplot
+A better-looking plot of carat v/s price with cut represented by color using the function `qplot` from the `ggplot2` library loaded earlier
+```{r}
+qplot(data = diamonds, x = carat, y = price, xlab = "Carat", ylab = "Price, in USD", main = "Carat v/s Price of diamonds (USD)", color = cut)
+```
+
+A zoomed in version of the earlier plot (excluding some outliers)
+```{r}
+qplot(data = diamonds, x = carat, y = price, xlab = "Carat", ylab = "Price, in USD", main = "Carat v/s Price of diamonds (USD)", color = cut) + scale_x_continuous(lim = c(0, 2.5), breaks = seq(0, 2.5, 0.25)) + scale_y_continuous(lim = c(0, 18000), breaks = seq(0, 18000, 500))
+
+```
+
+
+## Regression, Carat v/s Price
+
+### Splitting the data
+In order to perform cross-validation on our regression model, it is necessary to split the data into two parts namely, the `train` (80 %) and the `test` (20 %) datasets.
+```{r}
+test.indices <- sample(1:nrow(diamonds), size = 0.2 * nrow(diamonds))
+test <- diamonds[test.indices, ] 
+train <- diamonds[-test.indices, ]
+
+# Sanity check
+nrow(test) + nrow(train) == nrow(diamonds)
+```
+
+### Training the regression model
+```{r}
+model <- glm(data = train, formula = price ~ exp(carat))
+```
+
+### Plotting the fit
+```{r}
+xpoints <- seq(0, 5, 0.1)
+ypoints <- predict(model, list(carat = xpoints))
+plt <- ggplot() + geom_point(data = diamonds, aes(x = carat, y = price), color = "gray") 
+plt <- plt + xlab("Carat") + ylab("Price in USD") + ggtitle("Diamonds, regression model : price ~ exp(carat)") 
+plt <- plt + geom_line(aes(x = xpoints, y = ypoints))
+plt <- plt + scale_x_continuous(lim = c(0, 4.25), breaks = seq(0, 5, 0.25)) 
+plt <- plt + scale_y_continuous(lim = c(0, 18823), breaks = seq(0, 18823, 500))
+plt
+```
+
+### Testing
+The root mean square error for the model is calculated as follows -
+```{r}
+price.prediction <- predict(model, data = test)
+rms.error <- sqrt(sum((price.prediction - test$price) ^ 2) / nrow(test))
+rms.error
+```
