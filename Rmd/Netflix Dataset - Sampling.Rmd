@@ -1,0 +1,89 @@
+---
+title: "Netflix Dataset - Sampling"
+author: "Saurabh"
+date: "2 June 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Connecting to database
+```{r}
+library("RPostgreSQL")
+library("lubridate")
+
+DBNAME = "netflix"
+
+con = dbConnect(dbDriver("PostgreSQL"), 
+                dbname=DBNAME, 
+                user="postgres", 
+                password="pass", 
+                host="localhost", port=5432)
+```
+
+## Taking 9 samples
+```{r}
+# take 9 samples each of 1% of total no. of  rows
+samples = list()
+query = "select * from ratings tablesample bernoulli(1);"
+for (i in 1:9) {
+  df = dbGetQuery(con, query)
+  print (summary(df))
+  samples[[i]] = df
+}
+
+```
+
+## Histogram of distribution of rating values
+```{r}
+par(mfrow=c(3,3))
+for (i in 1:9) {
+  hist(samples[[i]]$rating, main=paste("sample ", i), xlab = "Ratings")
+}
+
+
+```
+
+## Checking for no significant difference between sample means
+
+### Function to perform f-test followed by t-test
+```{r}
+
+f.and.t.test = function (x, y) {
+  var.test.result = var.test(x, y)
+  num.df = var.test.result$parameter[["num df"]]
+  denom.df = var.test.result$parameter[["denom df"]]
+  f.value = var.test.result$statistic[["F"]]
+  
+  var.equal = qf(0.95, num.df, denom.df) >= f.value
+  
+  t.test.result = t.test(x, y, var.equal = var.equal)
+  t.value = t.test.result$statistic[["t"]]
+  df = t.test.result$parameter[["df"]]
+  qt(0.975, df) >= t.value
+  
+  
+}
+
+```
+
+### Checking for all samples
+```{r}
+# check equality of means in samples
+results = list()
+for (i in 1:9) {
+  r = list()
+  for (j in 1:9) {
+    if (i == j) next
+    r[[j]] = f.and.t.test(samples[[i]]$rating, samples[[j]]$rating)
+
+  }
+  results[[i]] = r
+}
+
+print (results)
+
+```
+

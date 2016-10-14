@@ -1,0 +1,104 @@
+---
+title: "EDA of Movielens + IMDB Data"
+author: "Saurabh"
+date: "3 June 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Setup
+
+```{r results='hide', message=FALSE, warning=FALSE}
+library("RPostgreSQL")
+library("stringr")
+library("plyr")
+library("ggplot2")
+library("lubridate")
+
+DBNAME = "movielens"
+
+
+```
+
+## Connecting to DB & Fetching data
+
+```{r}
+con = dbConnect(dbDriver("PostgreSQL"), 
+                dbname=DBNAME, 
+                user="postgres", 
+                password="pass", 
+                host="localhost", port=5432)
+query = "select * from imdbmovies";
+movies = dbGetQuery(con, query)
+movies$original_language = as.factor(movies$original_language)
+summary(movies)
+```
+Note: `production_countries`, `production_companies` and `spoken_languages` are postgresql arrays but have been read as strings (ex. '{"US", "UK"}'). 
+
+
+## Plots
+
+```{r}
+qplot(subset(movies$budget, movies$budget > 1), bins = 50, geom = "histogram", main = "Histogram for distribution of movie budgets", xlab = "Movie Budget in $s")
+```
+
+
+
+```{r}
+qplot(subset(movies$popularity, movies$popularity > 0), bins=100, geom = "histogram", main = "Histogram for distribution of popularity of movies", xlab = "Movie Popularity")
+```
+
+```{r}
+qplot(movies$release_date)
+
+```
+
+```{r}
+qplot(as.factor(month(movies$release_date)))
+
+```
+
+```{r}
+qplot(as.factor(day(movies$release_date)))
+
+```
+
+```{r}
+qplot(movies$revenue, bins = 100)
+
+```
+
+```{r}
+qplot(movies$runtime, bins = 100)
+```
+
+
+```{r}
+qplot(as.factor(month(movies$release_date)), movies$revenue)
+
+```
+
+```{r}
+qplot(movies$vote_average, movies$revenue)
+```
+
+```{r}
+qplot(as.factor(month(movies$release_date)), movies$budget)
+
+```
+
+```{r}
+qplot(movies$runtime, movies$revenue)
+```
+
+
+
+
+
+
+
+
+
